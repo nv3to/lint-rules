@@ -6,6 +6,9 @@ each repo supplies its own pinned gofmt, go and pyflakes.
 
 Custom rules come in two forms: a `Rule` config line applies a linter to
 every lint() package, and lint_rule() adds one to a single package.
+
+repolint() builds the plugin's own checks (tools/repolint) with the repo's go,
+for a `Rule` line or lint_rule() to use as a tool.
 """
 
 
@@ -158,4 +161,42 @@ def repo_lint(name:str="repo_lint", packages:list=[]):
         sandbox = False,
         test_cmd = "$TOOLS_GUARD" + args,
         test_tools = tools,
+    )
+
+
+def repolint(name:str="repolint", visibility:list=["PUBLIC"]):
+    """Builds the plugin's own checks, the program in tools/repolint.
+
+    The program is Go source that imports only the standard library. It is
+    compiled with the repo's go (the go_tool config key), so building it
+    downloads nothing. Use the target as the tool of a `Rule` config line or
+    of lint_rule(); the README lists the checks and their arguments.
+
+    Args:
+      name (str): Name of the target, which is the built program.
+      visibility (list): Visibility of the target. Defaults to PUBLIC, as a
+                         `Rule` line names it from every package.
+    """
+    if not CONFIG.LINT.GO_TOOL:
+        fail('repolint: set GoTool in [Plugin "lint"] to the go that builds the checks')
+    cmd = " && ".join([
+        # go finds its GOROOT from the path of its own binary, which sits in the
+        # toolchain's directory, so no GOROOT is set; make a relative path
+        # absolute before the cd.
+        'go="$TOOL"',
+        'case "$go" in /*) ;; *) go="$PWD/$go" ;; esac',
+        # Where the plugin's sources land depends on the plugin's subrepo: find go.mod.
+        'for f in $SRCS; do case "$f" in go.mod|*/go.mod) dir="${f%go.mod}" ;; esac; done',
+        'export GOCACHE="$TMP_DIR/gocache" GOPATH="$TMP_DIR/gopath" GOMODCACHE="$TMP_DIR/gomodcache"',
+        "export GOTOOLCHAIN=local GOENV=off GOFLAGS=-mod=mod GOPROXY=off GOWORK=off CGO_ENABLED=0",
+        '(cd "${dir:-.}" && "$go" build -trimpath -buildvcs=false -o "$TMP_DIR/$OUT" .)',
+    ])
+    return genrule(
+        name = name,
+        srcs = ["///lint//tools/repolint:srcs"],
+        outs = [name],
+        binary = True,
+        cmd = cmd,
+        tools = [CONFIG.LINT.GO_TOOL],
+        visibility = visibility,
     )

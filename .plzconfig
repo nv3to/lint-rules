@@ -14,7 +14,7 @@ Optional = true
 Inherit = true
 
 [PluginConfig "go_tool"]
-Help = Build label or path of go, used by repo_lint() for `go vet ./...`. Unset skips vet.
+Help = Build label or path of go. repo_lint() runs `go vet ./...` with it, and repolint() compiles the built-in checks with it. Unset skips vet, and repolint() fails.
 Optional = true
 Inherit = true
 

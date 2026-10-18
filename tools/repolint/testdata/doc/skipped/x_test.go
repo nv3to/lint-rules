@@ -1,0 +1,3 @@
+package skipped
+
+func Exported() {}

@@ -1,0 +1,34 @@
+"""repolint_test(): the tests of the plugin's own checks, run in a consuming repo.
+
+Subinclude it in the BUILD file that calls repolint(). It is a file of its own
+because it needs the go plugin, under the subrepo name `go`, which the rest of
+the plugin does not.
+"""
+
+subinclude("///go//build_defs:go")
+
+
+def repolint_test(name:str="repolint_test", tool:str=":repolint", visibility:list=None):
+    """Runs the tests of tools/repolint against a built repolint.
+
+    The tests run the program over the testdata and over files they write, so
+    they check the binary that the repo's lint rules use. They find the program
+    and the testdata in the named data `repolint` and `testdata`, which plz
+    gives them as $DATA_REPOLINT and $DATA_TESTDATA.
+
+    Args:
+      name (str): Name of the test.
+      tool (str): The target that repolint() built.
+      visibility (list): Visibility of the test.
+    """
+    return go_test(
+        name = name,
+        srcs = ["///lint//tools/repolint:tests"],
+        data = {
+            "repolint": [tool],
+            "testdata": ["///lint//tools/repolint:testdata"],
+        },
+        external = True,
+        labels = ["repolint"],
+        visibility = visibility,
+    )
