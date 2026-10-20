@@ -181,15 +181,17 @@ def repolint(name:str="repolint", visibility:list=["PUBLIC"]):
         fail('repolint: set GoTool in [Plugin "lint"] to the go that builds the checks')
     cmd = " && ".join([
         # go finds its GOROOT from the path of its own binary, which sits in the
-        # toolchain's directory, so no GOROOT is set; make a relative path
-        # absolute before the cd.
+        # toolchain's directory, so no GOROOT is set. Relative paths, of go
+        # and of the output, are made absolute before the cd.
         'go="$TOOL"',
         'case "$go" in /*) ;; *) go="$PWD/$go" ;; esac',
+        'out="$OUT"',
+        'case "$out" in /*) ;; *) out="$PWD/$out" ;; esac',
         # Where the plugin's sources land depends on the plugin's subrepo: find go.mod.
         'for f in $SRCS; do case "$f" in go.mod|*/go.mod) dir="${f%go.mod}" ;; esac; done',
         'export GOCACHE="$TMP_DIR/gocache" GOPATH="$TMP_DIR/gopath" GOMODCACHE="$TMP_DIR/gomodcache"',
         "export GOTOOLCHAIN=local GOENV=off GOFLAGS=-mod=mod GOPROXY=off GOWORK=off CGO_ENABLED=0",
-        '(cd "${dir:-.}" && "$go" build -trimpath -buildvcs=false -o "$TMP_DIR/$OUT" .)',
+        '(cd "${dir:-.}" && "$go" build -trimpath -buildvcs=false -o "$out" .)',
     ])
     return genrule(
         name = name,
